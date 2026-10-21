@@ -112,7 +112,7 @@ return [
         'ja' => '日本語',
         'ko' => '한국어',
         'pt_BR' => 'Portuguese',
-        'ru'    => 'Русский',
+        'ru' => 'Русский',
         'tr' => 'Türkçe',
         'vi' => 'Vietnamese',
         'zh_CN' => '简体中文',

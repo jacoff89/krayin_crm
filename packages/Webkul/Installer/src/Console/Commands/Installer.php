@@ -45,7 +45,7 @@ class Installer extends Command
         'es' => 'Spanish',
         'fa' => 'Persian',
         'pt_BR' => 'Portuguese',
-        'ru'    => 'Русский',
+        'ru' => 'Русский',
         'zh_CN' => 'Chinese (Simplified)',
     ];
 
