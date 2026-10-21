@@ -24,7 +24,7 @@
 3. [Requirements](#requirements)
 4. [Installation & Configuration](#installation-and-configuration)
 4. [Docker Installation](https://devdocs.krayincrm.com/2.0/introduction/docker.html)
-5. [Krayin Cloud System](#krayin-cloud-system)
+5. [Krayin Cloud System](#krayin-cloud-hosting)
 6. [License](#license)
 7. [Security Vulnerabilities](#security-vulnerabilities)
 
@@ -66,11 +66,10 @@ Take advantage of two of the hottest frameworks used in this project -- Laravel 
 
 -   **SERVER**: Apache 2 or NGINX.
 -   **RAM**: 3 GB or higher.
--   **PHP**: 8.1 or higher
--   **For MySQL users**: 5.7.23 or higher.
--   **For MariaDB users**: 10.2.7 or Higher.
--   **Node**: 8.11.3 LTS or higher.
+-   **PHP**: 8.3 or higher
 -   **Composer**: 2.5 or higher
+-   **For MySQL users**: 8.0.32 or higher.
+-   **For MariaDB users**: 11.4 LTS or higher (11.8 LTS recommended).
 
 ### Installation and Configuration
 

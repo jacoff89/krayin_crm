@@ -45,64 +45,64 @@ class Activity extends AbstractEntity
     {
         $attributes = [
             [
-                'id'          => 'title',
-                'type'        => 'text',
-                'name'        => 'Title',
+                'id' => 'title',
+                'type' => 'text',
+                'name' => 'Title',
                 'lookup_type' => null,
-                'options'     => collect(),
+                'options' => collect(),
             ], [
-                'id'          => 'type',
-                'type'        => 'multiselect',
-                'name'        => 'Type',
+                'id' => 'type',
+                'type' => 'multiselect',
+                'name' => 'Type',
                 'lookup_type' => null,
-                'options'     => collect([
+                'options' => collect([
                     (object) [
-                        'id'   => 'note',
+                        'id' => 'note',
                         'name' => 'Note',
                     ], (object) [
-                        'id'   => 'call',
+                        'id' => 'call',
                         'name' => 'Call',
                     ], (object) [
-                        'id'   => 'meeting',
+                        'id' => 'meeting',
                         'name' => 'Meeting',
                     ], (object) [
-                        'id'   => 'lunch',
+                        'id' => 'lunch',
                         'name' => 'Lunch',
                     ], (object) [
-                        'id'   => 'file',
+                        'id' => 'file',
                         'name' => 'File',
                     ],
                 ]),
             ], [
-                'id'          => 'location',
-                'type'        => 'text',
-                'name'        => 'Location',
+                'id' => 'location',
+                'type' => 'text',
+                'name' => 'Location',
                 'lookup_type' => null,
-                'options'     => collect(),
+                'options' => collect(),
             ], [
-                'id'          => 'comment',
-                'type'        => 'textarea',
-                'name'        => 'Comment',
+                'id' => 'comment',
+                'type' => 'textarea',
+                'name' => 'Comment',
                 'lookup_type' => null,
-                'options'     => collect(),
+                'options' => collect(),
             ], [
-                'id'          => 'schedule_from',
-                'type'        => 'datetime',
-                'name'        => 'Schedule From',
+                'id' => 'schedule_from',
+                'type' => 'datetime',
+                'name' => 'Schedule From',
                 'lookup_type' => null,
-                'options'     => collect(),
+                'options' => collect(),
             ], [
-                'id'          => 'schedule_to',
-                'type'        => 'datetime',
-                'name'        => 'Schedule To',
+                'id' => 'schedule_to',
+                'type' => 'datetime',
+                'name' => 'Schedule To',
                 'lookup_type' => null,
-                'options'     => collect(),
+                'options' => collect(),
             ], [
-                'id'          => 'user_id',
-                'type'        => 'select',
-                'name'        => 'User',
+                'id' => 'user_id',
+                'type' => 'select',
+                'name' => 'User',
                 'lookup_type' => 'users',
-                'options'     => $this->attributeRepository->getLookUpOptions('users'),
+                'options' => $this->attributeRepository->getLookUpOptions('users'),
             ],
         ];
 
@@ -117,7 +117,7 @@ class Activity extends AbstractEntity
         $emailTemplates = parent::getEmailTemplatePlaceholders($entity);
 
         $emailTemplates['menu'][] = [
-            'text'  => 'Participants',
+            'text' => 'Participants',
             'value' => '{%activities.participants%}',
         ];
 
@@ -127,20 +127,26 @@ class Activity extends AbstractEntity
     /**
      * Replace placeholders with values.
      */
-    public function replacePlaceholders(mixed $entity, string $content): string
+    public function replacePlaceholders(mixed $entity, string $content, string $context = 'html'): string
     {
-        $content = parent::replacePlaceholders($entity, $content);
+        $content = parent::replacePlaceholders($entity, $content, $context);
 
+        /**
+         * The list markup is built here, so it stays raw; the participant names come from user and
+         * contact records and are escaped for the context they land in.
+         */
         $value = '<ul style="padding-left: 18px;margin: 0;">';
 
         foreach ($entity->participants as $participant) {
-            $value .= '<li>'.($participant->user ? $participant->user->name : $participant->person->name).'</li>';
+            $name = $participant->user ? $participant->user->name : $participant->person->name;
+
+            $value .= '<li>'.$this->escapePlaceholderValue((string) $name, $context).'</li>';
         }
 
         $value .= '</ul>';
 
         return strtr($content, [
-            '{%'.$this->entityType.'.participants%}'   => $value,
+            '{%'.$this->entityType.'.participants%}' => $value,
             '{% '.$this->entityType.'.participants %}' => $value,
         ]);
     }
@@ -168,20 +174,20 @@ class Activity extends AbstractEntity
 
         return [
             [
-                'id'         => 'update_related_leads',
-                'name'       => trans('admin::app.settings.workflows.helpers.update-related-leads'),
+                'id' => 'update_related_leads',
+                'name' => trans('admin::app.settings.workflows.helpers.update-related-leads'),
                 'attributes' => $this->getAttributes('leads'),
             ], [
-                'id'      => 'send_email_to_sales_owner',
-                'name'    => trans('admin::app.settings.workflows.helpers.send-email-to-sales-owner'),
+                'id' => 'send_email_to_sales_owner',
+                'name' => trans('admin::app.settings.workflows.helpers.send-email-to-sales-owner'),
                 'options' => $emailTemplates,
             ], [
-                'id'      => 'send_email_to_participants',
-                'name'    => trans('admin::app.settings.workflows.helpers.send-email-to-participants'),
+                'id' => 'send_email_to_participants',
+                'name' => trans('admin::app.settings.workflows.helpers.send-email-to-participants'),
                 'options' => $emailTemplates,
             ], [
-                'id'      => 'trigger_webhook',
-                'name'    => trans('admin::app.settings.workflows.helpers.add-webhook'),
+                'id' => 'trigger_webhook',
+                'name' => trans('admin::app.settings.workflows.helpers.add-webhook'),
                 'options' => $webhooksOptions,
             ],
         ];
@@ -205,7 +211,7 @@ class Activity extends AbstractEntity
                     foreach ($leadIds as $leadId) {
                         $this->leadRepository->update(
                             [
-                                'entity_type'        => 'leads',
+                                'entity_type' => 'leads',
                                 $action['attribute'] => $action['value'],
                             ],
                             $leadId,
@@ -224,13 +230,13 @@ class Activity extends AbstractEntity
 
                     try {
                         Mail::queue(new Common([
-                            'to'          => $activity->user->email,
-                            'subject'     => $this->replacePlaceholders($activity, $emailTemplate->subject),
-                            'body'        => $this->replacePlaceholders($activity, $emailTemplate->content),
+                            'to' => $activity->user->email,
+                            'subject' => $this->replacePlaceholders($activity, $emailTemplate->subject),
+                            'body' => $this->replacePlaceholders($activity, $emailTemplate->content),
                             'attachments' => [
                                 [
-                                    'name'    => 'invite.ics',
-                                    'mime'    => 'text/calendar',
+                                    'name' => 'invite.ics',
+                                    'mime' => 'text/calendar',
                                     'content' => $this->getICSContent($activity),
                                 ],
                             ],
@@ -250,15 +256,15 @@ class Activity extends AbstractEntity
                     try {
                         foreach ($activity->participants as $participant) {
                             Mail::queue(new Common([
-                                'to'          => $participant->user
+                                'to' => $participant->user
                                     ? $participant->user->email
                                     : data_get($participant->person->emails, '*.value'),
-                                'subject'     => $this->replacePlaceholders($activity, $emailTemplate->subject),
-                                'body'        => $this->replacePlaceholders($activity, $emailTemplate->content),
+                                'subject' => $this->replacePlaceholders($activity, $emailTemplate->subject),
+                                'body' => $this->replacePlaceholders($activity, $emailTemplate->content),
                                 'attachments' => [
                                     [
-                                        'name'    => 'invite.ics',
-                                        'mime'    => 'text/calendar',
+                                        'name' => 'invite.ics',
+                                        'mime' => 'text/calendar',
                                         'content' => $this->getICSContent($activity),
                                     ],
                                 ],
@@ -284,36 +290,57 @@ class Activity extends AbstractEntity
     /**
      * Returns .ics file for attachments.
      */
+    /**
+     * Escape a value for an iCalendar property, per RFC 5545 section 3.3.11.
+     *
+     * The file is built by concatenating properties and joining them with CRLF, so a newline in a
+     * stored title, location, comment or participant name would terminate its property early and
+     * let the rest be read as further iCalendar lines — a substituted ORGANIZER, an injected URL or
+     * ATTACH, or an extra VEVENT that silently lands on the recipient's calendar.
+     */
+    protected function escapeICSValue(?string $value): string
+    {
+        return strtr((string) $value, [
+            '\\' => '\\\\',
+            "\r\n" => '\\n',
+            "\r" => '\\n',
+            "\n" => '\\n',
+            ';' => '\\;',
+            ',' => '\\,',
+        ]);
+    }
+
     public function getICSContent(ContractsActivity $activity): string
     {
         $content = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
             'PRODID:-//Krayincrm//Krayincrm//EN',
+            'METHOD:REQUEST',
             'BEGIN:VEVENT',
             'UID:'.time().'-'.$activity->id,
-            'DTSTAMP:'.Carbon::now()->format('YmdTHis'),
-            'CREATED:'.$activity->created_at->format('YmdTHis'),
+            'DTSTAMP:'.Carbon::now()->utc()->format('Ymd\THis\Z'),
+            'CREATED:'.$activity->created_at->copy()->utc()->format('Ymd\THis\Z'),
             'SEQUENCE:1',
-            'ORGANIZER;CN='.$activity->user->name.':MAILTO:'.$activity->user->email,
+            'ORGANIZER;CN='.$this->escapeICSValue($activity->user->name).':MAILTO:'.$this->escapeICSValue($activity->user->email),
         ];
 
         foreach ($activity->participants as $participant) {
             if ($participant->user) {
-                $content[] = 'ATTENDEE;ROLE=REQ-PARTICIPANT;CN='.$participant->user->name.';PARTSTAT=NEEDS-ACTION:MAILTO:'.$participant->user->email;
+                $content[] = 'ATTENDEE;ROLE=REQ-PARTICIPANT;CN='.$this->escapeICSValue($participant->user->name).';PARTSTAT=NEEDS-ACTION:MAILTO:'.$this->escapeICSValue($participant->user->email);
             } else {
                 foreach (data_get($participant->person->emails, '*.value') as $email) {
-                    $content[] = 'ATTENDEE;ROLE=REQ-PARTICIPANT;CN='.$participant->person->name.';PARTSTAT=NEEDS-ACTION:MAILTO:'.$email;
+                    $content[] = 'ATTENDEE;ROLE=REQ-PARTICIPANT;CN='.$this->escapeICSValue($participant->person->name).';PARTSTAT=NEEDS-ACTION:MAILTO:'.$this->escapeICSValue($email);
                 }
             }
         }
 
         $content = array_merge($content, [
-            'DTSTART:'.$activity->schedule_from->format('YmdTHis'),
-            'DTEND:'.$activity->schedule_to->format('YmdTHis'),
-            'SUMMARY:'.$activity->title,
-            'LOCATION:'.$activity->location,
-            'DESCRIPTION:'.$activity->comment,
+            'DTSTART:'.$activity->schedule_from->copy()->utc()->format('Ymd\THis\Z'),
+            'DTEND:'.$activity->schedule_to->copy()->utc()->format('Ymd\THis\Z'),
+            'SUMMARY:'.$this->escapeICSValue($activity->title),
+            'LOCATION:'.$this->escapeICSValue($activity->location),
+            'DESCRIPTION:'.$this->escapeICSValue($activity->comment),
             'END:VEVENT',
             'END:VCALENDAR',
         ]);

@@ -7,15 +7,18 @@ use Illuminate\Support\Collection;
 use Webkul\Core\Repositories\CoreConfigRepository;
 use Webkul\Core\Repositories\CountryRepository;
 use Webkul\Core\Repositories\CountryStateRepository;
+use Webkul\Core\Traits\Sanitizer;
 
 class Core
 {
+    use Sanitizer;
+
     /**
      * The Krayin version.
      *
      * @var string
      */
-    const KRAYIN_VERSION = '2.1.6';
+    const KRAYIN_VERSION = '2.2.7';
 
     /**
      * Create a new instance.
@@ -136,7 +139,7 @@ class Core
 
         $collection = $this->countryStateRepository->findByField([
             'country_code' => $countryCode,
-            'code'         => $stateCode,
+            'code' => $stateCode,
         ]);
 
         if (count($collection)) {

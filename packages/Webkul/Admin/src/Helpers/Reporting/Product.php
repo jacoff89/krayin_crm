@@ -36,6 +36,10 @@ class Product extends AbstractReporting
             ->select('*')
             ->addSelect(DB::raw('SUM('.$tablePrefix.'lead_products.amount) as revenue'))
             ->whereBetween('leads.closed_at', [$this->startDate, $this->endDate])
+            ->when(
+                ($userIds = bouncer()->getAuthorizedUserIds()) !== null,
+                fn ($query) => $query->whereIn('leads.user_id', $userIds)
+            )
             ->having(DB::raw('SUM('.$tablePrefix.'lead_products.amount)'), '>', 0)
             ->groupBy('product_id')
             ->orderBy('revenue', 'DESC')
@@ -44,11 +48,11 @@ class Product extends AbstractReporting
 
         $items = $items->map(function ($item) {
             return [
-                'id'                => $item->product_id,
-                'name'              => $item->name,
-                'price'             => $item->product?->price,
-                'formatted_price'   => core()->formatBasePrice($item->price),
-                'revenue'           => $item->revenue,
+                'id' => $item->product_id,
+                'name' => $item->name,
+                'price' => $item->product?->price,
+                'formatted_price' => core()->formatBasePrice($item->price),
+                'revenue' => $item->revenue,
                 'formatted_revenue' => core()->formatBasePrice($item->revenue),
             ];
         });
@@ -81,10 +85,10 @@ class Product extends AbstractReporting
 
         $items = $items->map(function ($item) {
             return [
-                'id'                => $item->product_id,
-                'name'              => $item->name,
-                'price'             => $item->product?->price,
-                'formatted_price'   => core()->formatBasePrice($item->price),
+                'id' => $item->product_id,
+                'name' => $item->name,
+                'price' => $item->product?->price,
+                'formatted_price' => core()->formatBasePrice($item->price),
                 'total_qty_ordered' => $item->total_qty_ordered,
             ];
         });

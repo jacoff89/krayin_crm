@@ -208,6 +208,27 @@ abstract class DataGrid
     }
 
     /**
+     * Prepare and return the query builder with the currently requested filters
+     * and sort applied, but without pagination or export side effects — e.g.
+     * for bulk actions that need every matching row rather than just the
+     * current page or a file download.
+     */
+    public function getFilteredQueryBuilder(): mixed
+    {
+        $this->prepareColumns();
+
+        $this->setQueryBuilder();
+
+        $requestedParams = request()->only(['filters', 'sort']);
+
+        $this->queryBuilder = $this->processRequestedFilters($requestedParams['filters'] ?? []);
+
+        $this->queryBuilder = $this->processRequestedSorting($requestedParams['sort'] ?? []);
+
+        return $this->queryBuilder;
+    }
+
+    /**
      * Map your filter.
      */
     public function addFilter(string $datagridColumn, mixed $queryColumn): void
@@ -313,11 +334,11 @@ abstract class DataGrid
     protected function validatedRequest(): array
     {
         request()->validate([
-            'filters'     => ['sometimes', 'required', 'array'],
-            'sort'        => ['sometimes', 'required', 'array'],
-            'pagination'  => ['sometimes', 'required', 'array'],
-            'export'      => ['sometimes', 'required', 'boolean'],
-            'format'      => ['sometimes', 'required', 'in:csv,xls,xlsx'],
+            'filters' => ['sometimes', 'required', 'array'],
+            'sort' => ['sometimes', 'required', 'array'],
+            'pagination' => ['sometimes', 'required', 'array'],
+            'export' => ['sometimes', 'required', 'boolean'],
+            'format' => ['sometimes', 'required', 'in:csv,xls,xlsx'],
         ]);
 
         return request()->only(['filters', 'sort', 'pagination', 'export', 'format']);
@@ -505,11 +526,11 @@ abstract class DataGrid
                 $getUrl = $action->url;
 
                 $record->actions[] = [
-                    'index'  => ! empty($action->index) ? $action->index : 'action_'.$index + 1,
-                    'icon'   => $action->icon,
-                    'title'  => $action->title,
+                    'index' => ! empty($action->index) ? $action->index : 'action_'.$index + 1,
+                    'icon' => $action->icon,
+                    'title' => $action->title,
                     'method' => $action->method,
-                    'url'    => $getUrl($record),
+                    'url' => $getUrl($record),
                 ];
             }
         }
@@ -525,20 +546,20 @@ abstract class DataGrid
         $paginator = $this->paginator->toArray();
 
         return [
-            'id'           => Crypt::encryptString(get_called_class()),
-            'columns'      => $this->formatColumns(),
-            'actions'      => $this->formatActions(),
+            'id' => Crypt::encryptString(get_called_class()),
+            'columns' => $this->formatColumns(),
+            'actions' => $this->formatActions(),
             'mass_actions' => $this->formatMassActions(),
-            'records'      => $this->formatRecords($paginator['data']),
-            'meta'         => [
-                'primary_column'   => $this->primaryColumn,
-                'from'             => $paginator['from'],
-                'to'               => $paginator['to'],
-                'total'            => $paginator['total'],
+            'records' => $this->formatRecords($paginator['data']),
+            'meta' => [
+                'primary_column' => $this->primaryColumn,
+                'from' => $paginator['from'],
+                'to' => $paginator['to'],
+                'total' => $paginator['total'],
                 'per_page_options' => $this->perPageOptions,
-                'per_page'         => $paginator['per_page'],
-                'current_page'     => $paginator['current_page'],
-                'last_page'        => $paginator['last_page'],
+                'per_page' => $paginator['per_page'],
+                'current_page' => $paginator['current_page'],
+                'last_page' => $paginator['last_page'],
             ],
         ];
     }

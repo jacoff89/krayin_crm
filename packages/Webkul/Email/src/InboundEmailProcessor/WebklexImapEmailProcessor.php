@@ -7,6 +7,7 @@ use Webklex\IMAP\Facades\Client;
 use Webklex\IMAP\Support\FolderCollection;
 use Webklex\PHPIMAP\Message;
 use Webkul\Email\Enums\SupportedFolderEnum;
+use Webkul\Email\Helpers\HtmlFilter;
 use Webkul\Email\InboundEmailProcessor\Contracts\InboundEmailProcessor;
 use Webkul\Email\Repositories\AttachmentRepository;
 use Webkul\Email\Repositories\EmailRepository;
@@ -25,7 +26,8 @@ class WebklexImapEmailProcessor implements InboundEmailProcessor
      */
     public function __construct(
         protected EmailRepository $emailRepository,
-        protected AttachmentRepository $attachmentRepository
+        protected AttachmentRepository $attachmentRepository,
+        protected HtmlFilter $htmlFilter
     ) {
         $this->client = Client::make($this->getDefaultConfigs());
 
@@ -111,46 +113,55 @@ class WebklexImapEmailProcessor implements InboundEmailProcessor
          * To Do: Review this.
          */
         $folderName = match ($message->getFolder()->name) {
-            'INBOX'     => SupportedFolderEnum::INBOX->value,
+            'INBOX' => SupportedFolderEnum::INBOX->value,
             'Important' => SupportedFolderEnum::IMPORTANT->value,
-            'Starred'   => SupportedFolderEnum::STARRED->value,
-            'Drafts'    => SupportedFolderEnum::DRAFT->value,
+            'Starred' => SupportedFolderEnum::STARRED->value,
+            'Drafts' => SupportedFolderEnum::DRAFT->value,
             'Sent Mail' => SupportedFolderEnum::SENT->value,
-            'Trash'     => SupportedFolderEnum::TRASH->value,
-            default     => '',
+            'Trash' => SupportedFolderEnum::TRASH->value,
+            default => '',
         };
 
         $parentEmail = null;
 
         if ($email) {
+            $email = $this->emailRepository->findThreadRoot($email);
+
             $parentEmail = $this->emailRepository->update([
-                'folders'       => array_unique(array_merge($email->folders, [$folderName])),
+                'folders' => array_unique(array_merge($email->folders, [$folderName])),
                 'reference_ids' => array_merge($email->reference_ids ?? [], [$references]),
             ], $email->id);
         }
 
         $email = $this->emailRepository->create([
-            'from'          => $attributes['from']->first()->mail,
-            'subject'       => $attributes['subject']->first(),
-            'name'          => $attributes['from']->first()->personal,
-            'reply'         => $message->bodies['html'] ?? $message->bodies['text'],
-            'is_read'       => (int) $message->flags()->has('seen'),
-            'folders'       => [$folderName],
-            'reply_to'      => $this->getEmailsByAttributeCode($attributes, 'to'),
-            'cc'            => $this->getEmailsByAttributeCode($attributes, 'cc'),
-            'bcc'           => $this->getEmailsByAttributeCode($attributes, 'bcc'),
-            'source'        => 'email',
-            'user_type'     => 'person',
-            'unique_id'     => $messageId,
-            'message_id'    => $messageId,
+            'from' => $attributes['from']->first()->mail,
+            'subject' => $attributes['subject']->first(),
+            'name' => $attributes['from']->first()->personal,
+            /**
+             * Filtered on the way in, as the other inbound processor's bodies are: the message
+             * comes from outside the installation, and the mailbox renders what is stored.
+             */
+            'reply' => $this->htmlFilter->process(
+                $message->bodies['html'] ?? $message->bodies['text'] ?? '',
+                ''
+            ),
+            'is_read' => (int) $message->flags()->has('seen'),
+            'folders' => [$folderName],
+            'reply_to' => $this->getEmailsByAttributeCode($attributes, 'to'),
+            'cc' => $this->getEmailsByAttributeCode($attributes, 'cc'),
+            'bcc' => $this->getEmailsByAttributeCode($attributes, 'bcc'),
+            'source' => 'email',
+            'user_type' => 'person',
+            'unique_id' => $messageId,
+            'message_id' => $messageId,
             'reference_ids' => $references,
-            'created_at'    => $this->convertToDesiredTimezone($message->date->toDate()),
-            'parent_id'     => $parentEmail?->id,
+            'created_at' => $this->convertToDesiredTimezone($message->date->toDate()),
+            'parent_id' => $parentEmail?->id,
         ]);
 
         if ($message->hasAttachments()) {
             $this->attachmentRepository->uploadAttachments($email, [
-                'source'      => 'email',
+                'source' => 'email',
                 'attachments' => $message->getAttachments(),
             ]);
         }

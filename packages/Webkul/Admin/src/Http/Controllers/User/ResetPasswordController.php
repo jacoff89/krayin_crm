@@ -43,8 +43,8 @@ class ResetPasswordController extends Controller
     {
         try {
             $this->validate(request(), [
-                'token'    => 'required',
-                'email'    => 'required|email',
+                'token' => 'required',
+                'email' => 'required|email',
                 'password' => 'required|confirmed|min:6',
             ]);
 
@@ -86,6 +86,14 @@ class ResetPasswordController extends Controller
         $admin->save();
 
         event(new PasswordReset($admin));
+
+        /**
+         * A deactivated account is not signed in here. Login enforces the same
+         * check, so resetting a password must not become the way around it.
+         */
+        if (! (bool) $admin->status) {
+            return;
+        }
 
         auth()->guard('user')->login($admin);
     }

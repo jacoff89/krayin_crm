@@ -12,7 +12,7 @@
     <script type="text/x-template" id="v-lead-stages-template">
         <!-- Stages Container -->
         <div
-            class="flex w-full max-w-full overflow-auto"
+            class="flex w-full max-w-full"
             :class="{'opacity-50 pointer-events-none': isUpdating}"
         >
             <!-- Stages Item -->
@@ -86,7 +86,7 @@
                 v-slot="{ meta, errors, handleSubmit }"
                 as="div"
                 ref="stageUpdateForm"
-            >
+                >
                 <form @submit="handleSubmit($event, handleFormSubmit)">
                     {!! view_render_event('admin.leads.view.stages.form_controls.modal.before', ['lead' => $lead]) !!}
 

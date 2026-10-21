@@ -13,7 +13,7 @@
     >
         <div class="relative inline-block w-full">
             <!-- Input Container -->
-            <div class="relative flex items-center justify-between rounded border border-gray-200 p-2 hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:text-gray-300">
+            <div class="relative flex items-center justify-between rounded border border-gray-300 p-2 hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:text-gray-300">
                 @lang('admin::app.components.attributes.lookup.click-to-add')
 
                 <!-- Icons Container -->
@@ -41,7 +41,7 @@
             >
                 <!-- Input Container -->
                 <div
-                    class="relative flex items-center justify-between rounded border border-gray-200 p-2 hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:text-gray-300"
+                    class="relative flex items-center justify-between rounded border border-gray-300 p-2 hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:text-gray-300"
                     :class="{
                         'bg-gray-50': isDisabled,
                     }"
@@ -89,7 +89,7 @@
             <!-- Popup Box -->
             <div
                 v-if="showPopup"
-                class="absolute top-full z-10 mt-1 flex w-full origin-top transform flex-col gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-lg transition-transform dark:border-gray-900 dark:bg-gray-800"
+                class="absolute top-full z-10 mt-1 flex w-full origin-top transform flex-col gap-2 rounded-lg border border-gray-300 bg-white p-2 shadow-lg transition-transform dark:border-gray-900 dark:bg-gray-800"
             >
                 <!-- Search Bar -->
                 <div class="relative flex items-center">
@@ -98,10 +98,9 @@
                         type="text"
                         v-model.lazy="searchTerm"
                         v-debounce="500"
-                        class="w-full rounded border border-gray-200 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                        class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
                         placeholder="@lang('admin::app.components.attributes.lookup.search')"
                         ref="searchInput"
-                        @keyup="search"
                     />
 
                     <!-- Search Icon (absolute positioned) -->
@@ -119,7 +118,7 @@
                 <!-- Results List -->
                 <ul class="max-h-40 divide-y divide-gray-100 overflow-y-auto">
                     <li
-                        v-for="item in filteredResults"
+                        v-for="item in searchedResults"
                         :key="item.id"
                         class="flex cursor-pointer gap-2 p-2 transition-colors hover:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-900"
                         @click="handleResult(item)"
@@ -128,7 +127,7 @@
                         <span>@{{ item.name }}</span>
                     </li>
 
-                    <template v-if="filteredResults.length === 0">
+                    <template v-if="! isSearching && searchedResults.length === 0">
                         <li class="px-4 py-2 text-center text-gray-500">
                             @lang('admin::app.components.attributes.lookup.no-result-found')
                         </li>
@@ -174,6 +173,8 @@
                     lookupEntityRoute: `{{ route('admin.settings.attributes.lookup_entity') }}/${this.attribute.lookup_type}`,
 
                     isSearching: false,
+
+                    lastRequestId: 0,
                 };
             },
 
@@ -191,19 +192,6 @@
                 },
             },
 
-            computed: {
-                /**
-                 * Filter the searchedResults based on the search query.
-                 *
-                 * @return {Array}
-                 */
-                filteredResults() {
-                    return this.searchedResults.filter(item =>
-                        item.name.toLowerCase().includes(this.searchTerm.toLowerCase())
-                    );
-                }
-            },
-
             methods: {
                 toggle() {
                     if (this.isDisabled) {
@@ -215,29 +203,67 @@
                     this.showPopup = ! this.showPopup;
 
                     if (this.showPopup) {
+                        if (! this.searchTerm.trim()) {
+                            this.fetchLookupResults('', 5);
+                        }
+
                         this.$nextTick(() => this.$refs.searchInput.focus());
                     }
                 },
 
                 search() {
-                    if (this.searchTerm.length <= 2) {
-                        this.searchedResults = [];
+                    if (! this.showPopup) {
+                        return;
+                    }
 
-                        this.isSearching = false;
+                    const query = this.searchTerm.trim();
+
+                    if (! query) {
+                        this.fetchLookupResults('', 5);
 
                         return;
                     }
 
+                    this.fetchLookupResults(query);
+                },
+
+                fetchLookupResults(query = '', limit = null) {
+                    const requestId = ++this.lastRequestId;
+
                     this.isSearching = true;
 
-                    this.$axios.get(this.searchRoute, {
-                            params: { query: this.searchTerm }
+                    const params = { query };
+
+                    if (limit) {
+                        params.limit = limit;
+                    }
+
+                    this.$axios.get(this.searchRoute, { params })
+                        .then(response => {
+                            if (requestId !== this.lastRequestId) {
+                                return;
+                            }
+
+                            const data = Array.isArray(response.data)
+                                ? response.data
+                                : [];
+
+                            this.searchedResults = limit
+                                ? data.slice(0, limit)
+                                : data;
                         })
-                        .then (response => {
-                            this.searchedResults = response.data;
+                        .catch(error => {
+                            if (requestId !== this.lastRequestId) {
+                                return;
+                            }
+
+                            this.searchedResults = [];
                         })
-                        .catch (error => {})
-                        .finally(() => this.isSearching = false);
+                        .finally(() => {
+                            if (requestId === this.lastRequestId) {
+                                this.isSearching = false;
+                            }
+                        });
                 },
 
                 getLookUpEntity() {

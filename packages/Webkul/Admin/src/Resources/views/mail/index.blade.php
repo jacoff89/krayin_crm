@@ -1,10 +1,10 @@
 <x-admin::layouts>
     <x-slot:title>
-        @lang('admin::app.mail.index.' . $route)
+        {{ menu()->getLabel('mail.' . $route, 'admin::app.mail.index.' . $route) }}
     </x-slot>
 
     <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+        <div class="scroll-reactive-sticky sticky top-[60px] z-[1000] flex items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
             <div class="flex flex-col gap-2">
                 {!! view_render_event('admin.mail.create.breadcrumbs.before') !!}
                 
@@ -18,7 +18,7 @@
 
                 <div class="text-xl font-bold dark:text-white">
                     <!-- title -->
-                    @lang('admin::app.mail.index.' . $route)
+                    {{ menu()->getLabel('mail.' . $route, 'admin::app.mail.index.' . $route) }}
                 </div>
             </div>
 
@@ -216,7 +216,7 @@
                         <div
                             v-for="record in available.records"
                             class="flex cursor-pointer items-center justify-between border-b px-8 py-4 text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-950 max-lg:hidden"
-                            @click.stop="selectedMail=true; editModal(record.actions.find(action => action.index === 'edit'))"
+                            @click.stop="selectedMail=true; editModal(record.actions.find(action => ['edit', 'view'].includes(action.index)))"
                         >
                             <!-- Select Box -->
                             <div class="flex w-full items-center justify-start gap-[124px]">
@@ -285,7 +285,7 @@
                                             <!-- Reply (Content) -->
                                             <p
                                                 class="!font-normal"
-                                                v-html="truncatedReply(record.reply)"
+                                                v-safe-html="truncatedReply(record.reply)"
                                             >
                                             </p>
                                         </div>
@@ -303,7 +303,7 @@
                         <div
                             class="hidden border-b px-4 py-4 text-black dark:border-gray-800 dark:text-gray-300 max-lg:block"
                             v-for="record in available.records"
-                            @click.stop="selectedMail=true; editModal(record.actions.find(action => action.index === 'edit'))"
+                            @click.stop="selectedMail=true; editModal(record.actions.find(action => ['edit', 'view'].includes(action.index)))"
                         >
                             <div class="mb-2 flex items-center justify-between">
                                 <!-- Mass Actions for Mobile Cards -->
@@ -674,22 +674,33 @@
                     },
         
                     editModal(row) {
-                        if(row.title == 'View') {
-                            window.location.href = row.url;
-        
+                        if (! row?.url) {
                             return;
                         }
-        
+
+                        if (row.index !== 'edit') {
+                            window.location.href = row.url;
+
+                            return;
+                        }
+
                         this.$axios.get(row.url)
                             .then(response => {
-                                this.draft = response.data.data;
-        
+                                const draft = response.data?.data;
+
+                                if (! draft?.id) {
+                                    window.location.href = row.url;
+
+                                    return;
+                                }
+
+                                this.draft = draft;
+
                                 this.$refs.toggleComposeModal.toggle();
-        
-                                this.showCC = this.draft.cc.length > 0;
-        
-                                this.showBCC = this.draft.bcc.length > 0;
-        
+
+                                this.showCC = (this.draft.cc ?? []).length > 0;
+
+                                this.showBCC = (this.draft.bcc ?? []).length > 0;
                             })
                             .catch(error => {});
                     },

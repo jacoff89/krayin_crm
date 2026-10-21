@@ -1,4 +1,8 @@
 {
+  "__commonjsHelpers-C4iS2aBk.js": {
+    "file": "assets/_commonjsHelpers-C4iS2aBk.js",
+    "name": "_commonjsHelpers"
+  },
   "node_modules/vue-cal/dist/drag-and-drop.es.js": {
     "file": "assets/drag-and-drop.es-JkAdgoaa.js",
     "name": "drag-and-drop.es",
@@ -264,7 +268,7 @@
     "isDynamicEntry": true
   },
   "src/Resources/assets/css/app.css": {
-    "file": "assets/app-xcMAMgaV.css",
+    "file": "assets/app-Bt9De1Kc.css",
     "src": "src/Resources/assets/css/app.css",
     "isEntry": true
   },
@@ -273,7 +277,7 @@
     "src": "src/Resources/assets/fonts/icomoon.woff"
   },
   "src/Resources/assets/images/corner-clip.svg": {
-    "file": "assets/corner-clip-CRLTKrCT.svg",
+    "file": "assets/corner-clip-DsfWoKt7.svg",
     "src": "src/Resources/assets/images/corner-clip.svg"
   },
   "src/Resources/assets/images/dark-corner-clip.svg": {
@@ -365,10 +369,13 @@
     "src": "src/Resources/assets/images/mobile-light-logo.svg"
   },
   "src/Resources/assets/js/app.js": {
-    "file": "assets/app-B1rBjssc.js",
+    "file": "assets/app-BXJjC259.js",
     "name": "app",
     "src": "src/Resources/assets/js/app.js",
     "isEntry": true,
+    "imports": [
+      "__commonjsHelpers-C4iS2aBk.js"
+    ],
     "dynamicImports": [
       "node_modules/vue-cal/dist/i18n/ar.es.js",
       "node_modules/vue-cal/dist/i18n/bg.es.js",
@@ -424,5 +431,14 @@
     "name": "chart",
     "src": "src/Resources/assets/js/chart.js",
     "isEntry": true
+  },
+  "src/Resources/assets/js/echo.js": {
+    "file": "assets/echo-D8znIDWY.js",
+    "name": "echo",
+    "src": "src/Resources/assets/js/echo.js",
+    "isEntry": true,
+    "imports": [
+      "__commonjsHelpers-C4iS2aBk.js"
+    ]
   }
 }

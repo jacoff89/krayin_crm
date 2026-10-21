@@ -19,7 +19,7 @@ class EmailController extends BaseEmailController
         $response = json_decode(parent::store()->getContent(), true);
 
         return response()->json([
-            'data'    => $this->transformToActivity($response['data']),
+            'data' => $this->transformToActivity($response['data']),
             'message' => $response['message'],
         ]);
 
@@ -34,11 +34,20 @@ class EmailController extends BaseEmailController
      */
     public function detach($id)
     {
-        Event::dispatch('email.update.before', request()->input('email_id'));
+        $emailId = request()->input('email_id');
+
+        /**
+         * The mail to unlink is named by the request rather than the route, so it is checked
+         * against the acting user's data scope before being written to: without this, a user who
+         * cannot read a lead's correspondence could still cut it loose from the lead.
+         */
+        $this->preventUnauthorizedMailAccess($this->emailRepository->findOrFail($emailId));
+
+        Event::dispatch('email.update.before', $emailId);
 
         $email = $this->emailRepository->update([
             'lead_id' => null,
-        ], request()->input('email_id'));
+        ], $emailId);
 
         Event::dispatch('email.update.after', $email);
 
@@ -56,29 +65,29 @@ class EmailController extends BaseEmailController
     public function transformToActivity($data)
     {
         return new ActivityResource((object) [
-            'id'            => $data['id'],
-            'parent_id'     => $data['parent_id'],
-            'title'         => $data['subject'],
-            'type'          => 'email',
-            'is_done'       => 1,
-            'comment'       => $data['reply'],
+            'id' => $data['id'],
+            'parent_id' => $data['parent_id'],
+            'title' => $data['subject'],
+            'type' => 'email',
+            'is_done' => 1,
+            'comment' => $data['reply'],
             'schedule_from' => null,
-            'schedule_to'   => null,
-            'user'          => auth()->guard('user')->user(),
-            'participants'  => [],
-            'location'      => null,
-            'additional'    => json_encode([
+            'schedule_to' => null,
+            'user' => auth()->guard('user')->user(),
+            'participants' => [],
+            'location' => null,
+            'additional' => json_encode([
                 'folders' => $data['folders'],
-                'from'    => $data['from'],
-                'to'      => $data['reply_to'],
-                'cc'      => $data['cc'],
-                'bcc'     => $data['bcc'],
+                'from' => $data['from'],
+                'to' => $data['reply_to'],
+                'cc' => $data['cc'],
+                'bcc' => $data['bcc'],
             ]),
-            'files'         => array_map(function ($attachment) {
+            'files' => array_map(function ($attachment) {
                 return (object) $attachment;
             }, $data['attachments']),
-            'created_at'    => $data['created_at'],
-            'updated_at'    => $data['updated_at'],
+            'created_at' => $data['created_at'],
+            'updated_at' => $data['updated_at'],
         ]);
     }
 }

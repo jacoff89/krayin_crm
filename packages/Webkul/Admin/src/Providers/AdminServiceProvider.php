@@ -14,6 +14,7 @@ use Webkul\Admin\Exceptions\Handler;
 use Webkul\Admin\Http\Middleware\Bouncer as BouncerMiddleware;
 use Webkul\Admin\Http\Middleware\Locale;
 use Webkul\Admin\Http\Middleware\SanitizeUrl;
+use Webkul\Admin\Http\Middleware\VerifyInboundEmailToken;
 use Webkul\Contact\Models\Organization;
 use Webkul\Contact\Models\Person;
 use Webkul\Lead\Models\Lead;
@@ -33,6 +34,8 @@ class AdminServiceProvider extends ServiceProvider
         $router->aliasMiddleware('admin_locale', Locale::class);
 
         $router->aliasMiddleware('sanitize_url', SanitizeUrl::class);
+
+        $router->aliasMiddleware('inbound_email_token', VerifyInboundEmailToken::class);
 
         include __DIR__.'/../Http/helpers.php';
 
@@ -54,12 +57,12 @@ class AdminServiceProvider extends ServiceProvider
         $this->app->bind(ExceptionHandler::class, Handler::class);
 
         Relation::morphMap([
-            'leads'         => Lead::class,
+            'leads' => Lead::class,
             'organizations' => Organization::class,
-            'persons'       => Person::class,
-            'products'      => Product::class,
-            'quotes'        => Quote::class,
-            'warehouses'    => Warehouse::class,
+            'persons' => Person::class,
+            'products' => Product::class,
+            'quotes' => Quote::class,
+            'warehouses' => Warehouse::class,
         ]);
 
         $this->app->register(EventServiceProvider::class);
@@ -105,5 +108,7 @@ class AdminServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(dirname(__DIR__).'/Config/attribute_lookups.php', 'attribute_lookups');
 
         $this->mergeConfigFrom(dirname(__DIR__).'/Config/attribute_entity_types.php', 'attribute_entity_types');
+
+        $this->mergeConfigFrom(dirname(__DIR__).'/Config/support.php', 'support');
     }
 }
