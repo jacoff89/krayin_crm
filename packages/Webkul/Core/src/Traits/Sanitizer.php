@@ -83,21 +83,13 @@ trait Sanitizer
 
             $sanitizedContent = $sanitizer->sanitize($svgContent);
 
+            /**
+             * The sanitizer rejects documents it cannot safely clean (unparsable markup, custom DTDs,
+             * unknown encodings, ...). Such files are discarded rather than "cleaned" with regexes,
+             * which are trivially bypassed and would store the very payload the sanitizer refused.
+             */
             if ($sanitizedContent === false) {
-                $patterns = [
-                    '/<script\b[^>]*>(.*?)<\/script>/is',
-                    '/\bon\w+\s*=\s*["\'][^"\']*["\']/i',
-                    '/javascript\s*:/i',
-                    '/data\s*:[^,]*base64/i',
-                ];
-
-                $sanitizedContent = $svgContent;
-
-                foreach ($patterns as $pattern) {
-                    $sanitizedContent = preg_replace($pattern, '', $sanitizedContent);
-                }
-
-                Storage::put($path, $sanitizedContent);
+                Storage::delete($path);
 
                 return;
             }
