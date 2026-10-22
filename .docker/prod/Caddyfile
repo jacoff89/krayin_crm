@@ -1,0 +1,33 @@
+# APP_DOMAIN задаётся в .env, например crm.example.ru.
+# Caddy сам получит и будет продлевать сертификат Let's Encrypt.
+# Для запуска без домена/HTTPS можно указать APP_DOMAIN=:80
+
+{$APP_DOMAIN} {
+	root * /var/www/html/public
+	encode zstd gzip
+	log
+
+	request_body {
+		max_size 100MB
+	}
+
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# закрыть доступ к скрытым файлам (.env, .git и т.п.), кроме .well-known
+	@hidden {
+		path_regexp /\.
+		not path /.well-known/*
+	}
+	respond @hidden 404
+
+	php_fastcgi app:9000 {
+		read_timeout 300s
+	}
+
+	file_server
+}

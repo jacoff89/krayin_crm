@@ -1,0 +1,95 @@
+# Продовое окружение. Запускать только с явным указанием файла:
+#   docker compose -f docker-compose.prod.yml <команда>
+# Обычно всё делает ./bin/deploy.sh — подробности в DEPLOY.md.
+
+name: aquastyle-crm
+
+x-app: &app
+  image: aquastyle-crm-app:latest
+  env_file: .env
+  restart: unless-stopped
+  volumes:
+    - storage:/var/www/html/storage
+  networks:
+    - mailnet
+  depends_on:
+    db:
+      condition: service_healthy
+    postfix-opendkim:
+      condition: service_started
+
+services:
+  app:
+    <<: *app
+    build:
+      context: .
+      dockerfile: .docker/prod/Dockerfile
+      target: app
+
+  # Laravel scheduler (inbound-emails:process и др.) — тот же образ
+  scheduler:
+    <<: *app
+    command: ["php", "artisan", "schedule:work"]
+
+  web:
+    image: aquastyle-crm-web:latest
+    build:
+      context: .
+      dockerfile: .docker/prod/Dockerfile
+      target: web
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Укажите APP_DOMAIN в .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - storage:/var/www/html/storage:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    networks:
+      - mailnet
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Укажите DB_ROOT_PASSWORD в .env}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - mailnet
+    # Порт БД наружу не публикуется. Доступ с локальной машины — через SSH-туннель (см. DEPLOY.md).
+
+  # Имя сервиса важно: на него указывает msmtp в образе app
+  postfix-opendkim:
+    build: .docker/postfix-opendkim
+    restart: unless-stopped
+    networks:
+      - mailnet
+
+volumes:
+  storage:
+  db-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  mailnet:
+    driver: bridge
+    ipam:
+      config:
+        # Подсеть прописана в postfix main.cf (mynetworks) и opendkim TrustedHosts — не менять отдельно
+        - subnet: 172.19.0.0/16

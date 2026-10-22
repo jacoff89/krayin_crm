@@ -1,0 +1,36 @@
+# Контекст сборки продового образа (.docker/prod/Dockerfile).
+# На dev-сборку не влияет: там контекст — .docker/php-fpm и .docker/postfix-opendkim.
+
+.git
+.github
+.idea
+.vscode
+.ai
+.claude
+.codex
+.cursor
+.kilocode
+.phpunit.cache
+
+.env
+.env.*
+!.env.example
+
+node_modules
+vendor
+tests
+playwright-report
+test-results
+
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/debugbar/*
+storage/*.key
+bootstrap/cache/*.php
+public/storage
+public/*.hot
+
+docker-compose*.yml
+.docker/postfix-opendkim
