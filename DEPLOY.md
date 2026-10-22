@@ -5,22 +5,23 @@
 ## Как устроено
 
 ```
-              :80 / :443
-                  │
-            ┌─────▼─────┐   статика public/, HTTPS (Let's Encrypt, автопродление)
-            │    web    │   Caddy
-            └─────┬─────┘
-                  │ FastCGI :9000
-            ┌─────▼─────┐        ┌───────────┐
-            │    app    │        │ scheduler │  php artisan schedule:work
-            │  php-fpm  │        │ (тот же   │  (inbound-emails:process и др.)
-            └─────┬─────┘        │  образ)   │
-                  │              └─────┬─────┘
-       ┌──────────┴──────────┬─────────┘
- ┌─────▼─────┐      ┌────────▼─────────┐
- │    db     │      │ postfix-opendkim │  исходящая почта с DKIM
- │ MySQL 8.4 │      └──────────────────┘
- └───────────┘
+   браузер ──HTTPS──▶ головной nginx (SSL)
+                          │ HTTP, X-Forwarded-*
+                          ▼ :80 (WEB_BIND:WEB_PORT)
+                    ┌───────────┐
+                    │    web    │   nginx: статика public/
+                    └─────┬─────┘
+                          │ FastCGI :9000
+                    ┌─────▼─────┐        ┌───────────┐
+                    │    app    │        │ scheduler │  php artisan schedule:work
+                    │  php-fpm  │        │ (тот же   │  (inbound-emails:process и др.)
+                    └─────┬─────┘        │  образ)   │
+                          │              └─────┬─────┘
+               ┌──────────┴──────────┬─────────┘
+         ┌─────▼─────┐      ┌────────▼─────────┐
+         │    db     │      │ postfix-opendkim │  исходящая почта с DKIM
+         │ MySQL 8.4 │      └──────────────────┘
+         └───────────┘
 ```
 
 Чем прод отличается от dev (`docker-compose.yml`):
@@ -28,10 +29,9 @@
 - Код и `vendor` **запечены в образ**, а не примонтированы с хоста. Деплой = новый образ.
 - Изменяемые данные хранятся в docker volumes:
   - `storage` — загрузки, логи, сессии;
-  - `db-data` — MySQL;
-  - `caddy-data` — сертификаты.
+  - `db-data` — MySQL.
 - Порт MySQL наружу не публикуется.
-- Вместо nginx стоит Caddy, потому что он сам получает и продлевает HTTPS-сертификаты.
+- SSL здесь нет: внутренний nginx отдаёт HTTP, а HTTPS терминирует головной nginx. Laravel доверяет его заголовкам `X-Forwarded-*` (`trustProxies` в `bootstrap/app.php`), поэтому корректно генерирует `https://`-ссылки и secure-куки.
 - OPcache включён без проверки файлов, кэши Laravel (`config`, `route`, `event`) собираются при старте контейнера (`.docker/prod/entrypoint.sh`).
 - Фронтенд не собирается на сервере. Собранные ассеты (`public/admin/build`, `public/build` и т.д.) лежат в репозитории, как принято в Krayin. После изменений в Vue/CSS соберите их локально (`npm run build` в нужном пакете) и закоммитьте.
 
@@ -40,8 +40,8 @@
 | Файл | Назначение |
 |---|---|
 | `docker-compose.prod.yml` | сервисы прода |
-| `.docker/prod/Dockerfile` | образы `app` (php-fpm) и `web` (Caddy) |
-| `.docker/prod/Caddyfile` | веб-сервер |
+| `.docker/prod/Dockerfile` | образы `app` (php-fpm) и `web` (nginx) |
+| `.docker/prod/nginx.conf` | внутренний nginx |
 | `.docker/prod/php.ini`, `fpm-pool.conf` | настройки PHP |
 | `.docker/prod/entrypoint.sh` | кэши Laravel при старте |
 | `.env.prod.example` | шаблон `.env` для сервера |
@@ -52,9 +52,43 @@
 
 ## Первичная настройка (один раз)
 
-### 1. DNS
+### 1. Головной nginx
 
-Создайте A-запись домена (например `crm.yakov89.ru`) на IP сервера. Без неё Caddy не выпустит сертификат.
+DNS `crm.aquastyle74.ru` указывает на головной nginx, SSL настроен там. Добавьте на нём проксирование на CRM:
+
+```nginx
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name crm.aquastyle74.ru;
+    # ssl_certificate ... — как у вас уже настроено
+
+    client_max_body_size 100M;   # загрузка файлов в CRM
+
+    location / {
+        proxy_pass http://CRM_SERVER_IP:80;   # WEB_BIND:WEB_PORT из .env прода
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Port  $server_port;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+Заголовок `X-Forwarded-Proto` обязателен. Без него Laravel решит, что работает по HTTP: появятся `http://`-ссылки, mixed content и проблемы со входом.
+
+**Если головной nginx на том же сервере, что и CRM**, порт 80 уже занят им. Тогда в `.env` прода укажите `WEB_BIND=127.0.0.1` и `WEB_PORT=8080`, а в `proxy_pass` — `http://127.0.0.1:8080`.
+
+**Если головной nginx на другом сервере**, ограничьте доступ к порту 80 только с его IP. Docker публикует порты в обход `ufw`, поэтому правило нужно добавить в цепочку `DOCKER-USER`:
+
+```bash
+sudo iptables -I DOCKER-USER -p tcp --dport 80 ! -s IP_ГОЛОВНОГО_NGINX -j DROP
+```
+
+Чтобы правило пережило перезагрузку, поставьте `iptables-persistent`. Иначе любой сможет зайти напрямую по HTTP и подставить свои `X-Forwarded-*`.
 
 ### 2. Подготовка сервера
 
@@ -65,7 +99,7 @@ scp bin/server-setup.sh root@SERVER:/root/
 ssh root@SERVER bash /root/server-setup.sh
 ```
 
-Скрипт поставит Docker, файрвол (открыты только 22/80/443), swap и создаст пользователя `deploy`. Дальше всё делается под ним:
+Скрипт поставит Docker, файрвол (открыты только 22 и 80), swap и создаст пользователя `deploy`. Дальше всё делается под ним:
 
 ```bash
 ssh deploy@SERVER
@@ -92,7 +126,7 @@ nano .env
 
 Обязательно заполните:
 
-- `APP_DOMAIN`, `APP_URL`;
+- `APP_URL` (`https://crm.aquastyle74.ru`), `WEB_BIND`/`WEB_PORT` — см. шаг 1;
 - `DB_PASSWORD`, `DB_ROOT_PASSWORD` (сгенерировать можно командой `openssl rand -base64 24`);
 - почту и IMAP.
 
@@ -149,7 +183,7 @@ $C up -d --force-recreate app scheduler     # подхватить новый AP
 
 Установщик спросит данные администратора. Локаль и валюту после установки поменяйте в настройках CRM.
 
-Откройте `https://ВАШ_ДОМЕН`, всё должно работать.
+Откройте `https://crm.aquastyle74.ru`, всё должно работать.
 
 ---
 

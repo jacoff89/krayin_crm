@@ -38,16 +38,12 @@ services:
       dockerfile: .docker/prod/Dockerfile
       target: web
     restart: unless-stopped
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN:?Укажите APP_DOMAIN в .env}
+    # HTTP без SSL — сюда проксирует головной nginx.
+    # Если головной nginx на этом же сервере: WEB_BIND=127.0.0.1 и WEB_PORT отличный от 80.
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-80}:80"
     volumes:
       - storage:/var/www/html/storage:ro
-      - caddy-data:/data
-      - caddy-config:/config
     depends_on:
       - app
     networks:
@@ -83,8 +79,6 @@ services:
 volumes:
   storage:
   db-data:
-  caddy-data:
-  caddy-config:
 
 networks:
   mailnet:

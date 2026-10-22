@@ -5,7 +5,8 @@
 #
 # Цели сборки:
 #   app — php-fpm с приложением (из него же запускается scheduler)
-#   web — Caddy: HTTPS (Let's Encrypt), статика из public/, проксирование PHP в app:9000
+#   web — nginx на 80 порту: статика из public/, проксирование PHP в app:9000
+#         (SSL — на головном nginx снаружи)
 
 ############################
 # app
@@ -63,7 +64,7 @@ CMD ["php-fpm8.4", "-F", "-O"]
 ############################
 # web
 ############################
-FROM caddy:2-alpine AS web
+FROM nginx:stable-alpine AS web
 
-COPY .docker/prod/Caddyfile /etc/caddy/Caddyfile
+COPY .docker/prod/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=app /var/www/html/public /var/www/html/public

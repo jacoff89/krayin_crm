@@ -8,7 +8,7 @@
 #   - ставит Docker Engine + compose plugin (официальный скрипт get.docker.com)
 #   - создаёт пользователя deploy (группа docker), копирует ему SSH-ключи root
 #   - добавляет swap 2G, если swap нет (сборка composer и MySQL любят память)
-#   - открывает в файрволе только SSH, 80 и 443
+#   - открывает в файрволе только SSH и 80
 
 set -euo pipefail
 
@@ -53,8 +53,6 @@ fi
 echo "==> Файрвол"
 ufw allow OpenSSH
 ufw allow 80/tcp
-ufw allow 443/tcp
-ufw allow 443/udp
 ufw --force enable
 
 echo

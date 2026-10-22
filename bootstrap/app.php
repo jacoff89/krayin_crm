@@ -17,6 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(CanInstall::class);
 
+        /**
+         * On production the app runs behind a reverse proxy that terminates SSL, so
+         * X-Forwarded-* headers from it must be trusted, otherwise Laravel generates
+         * http:// URLs and secure cookies break. Requests reach PHP through the inner
+         * nginx container, i.e. from the docker network (see docker-compose.prod.yml).
+         */
+        $middleware->trustProxies(at: env('TRUSTED_PROXIES', '172.19.0.0/16'));
+
         $middleware->encryptCookies(except: [
             'dark_mode',
             'sidebar_collapsed',
