@@ -101,7 +101,7 @@ class ActivityDataGrid extends DataGrid
             'closure' => function ($row) {
                 $route = urldecode(route('admin.settings.users.index', ['id[eq]' => $row->created_by_id]));
 
-                return "<a class='text-brandColor hover:underline' href='".$route."'>".$row->created_by.'</a>';
+                return "<a class='text-brandColor hover:underline' href='".e($route)."'>".e($row->created_by).'</a>';
             },
         ]);
 
@@ -133,7 +133,7 @@ class ActivityDataGrid extends DataGrid
 
                 $route = urldecode(route('admin.leads.view', $row->lead_id));
 
-                return "<a class='text-brandColor hover:underline' target='_blank' href='".$route."'>".$row->lead_title.'</a>';
+                return "<a class='text-brandColor hover:underline' target='_blank' href='".e($route)."'>".e($row->lead_title).'</a>';
             },
         ]);
 

@@ -204,7 +204,7 @@
                                                             @click="sort(column)"
                                                         >
                                                             <div class="flex items-center gap-2">
-                                                                <span>{{ column.label }}</span>
+                                                                <span>@{{ column.label }}</span>
                                                                 <i
                                                                     class="align-text-bottom text-base text-gray-600 dark:text-gray-300"
                                                                     :class="[applied.sort.order === 'asc' ? 'icon-stats-down': 'icon-stats-up']"
@@ -265,9 +265,7 @@
                                                 <p
                                                     class="break-words text-gray-600 dark:text-gray-300"
                                                     v-html="record.created_by_id"
-                                                >
-                                                @{{ record.created_by_id }}
-                                                </p>
+                                                ></p>
                                             </div>
                                         </div>
 
@@ -276,9 +274,8 @@
                                             <div class="flex min-w-0 flex-col gap-1.5">
                                                 <p
                                                     class="text-gray-600 dark:text-gray-300"
-                                                >
-                                                @{{ record.is_done }}
-                                                </p>
+                                                    v-html="record.is_done"
+                                                ></p>
                                             </div>
                                         </div>
 
@@ -378,7 +375,17 @@
                                             <template v-for="column in available.columns">
                                                 <div class="flex flex-wrap items-baseline gap-x-2">
                                                     <span class="text-slate-600 dark:text-gray-300">@{{ column.label }}:</span>
-                                                    <span class="break-words font-medium text-slate-900 dark:text-white">@{{ record[column.index] }}</span>
+                                                    <!-- These columns are rendered as server-escaped HTML by ActivityDataGrid. -->
+                                                    <span
+                                                        v-if="htmlColumns.includes(column.index)"
+                                                        class="break-words font-medium text-slate-900 dark:text-white"
+                                                        v-html="record[column.index]"
+                                                    ></span>
+
+                                                    <span
+                                                        v-else
+                                                        class="break-words font-medium text-slate-900 dark:text-white"
+                                                    >@{{ record[column.index] }}</span>
                                                 </div>
                                             </template>
                                         </div>
@@ -445,9 +452,9 @@
                             @dragstart.prevent
                             v-tooltip="{
                                 content: `
-                                    <div class='mb-1 font-semibold text-white'>${event.title}</div>
+                                    <div class='mb-1 font-semibold text-white'>${escapeHtml(event.title)}</div>
                                     <div class='mb-1 text-xs text-gray-300'>${formatTime(event.start)} - ${formatTime(event.end)}</div>
-                                    ${event.description ? `<div class='text-xs text-gray-200'>${event.description}</div>` : ''
+                                    ${event.description ? `<div class='text-xs text-gray-200'>${escapeHtml(event.description)}</div>` : ''
                                 }`,
                                 html: true,
                                 placement: 'top',
@@ -505,6 +512,8 @@
                 data() {
                     return {
                         viewType: "{{ request('view-type') }}" || 'table',
+
+                        htmlColumns: ['is_done', 'created_by_id', 'lead_title'],
                     };
                 },
 
@@ -957,8 +966,15 @@
                             window.location.href = `{{ route('admin.activities.edit', ':id') }}`.replace(':id', event.id);
                         }
                     },
+
+                    /**
+                     * Escape user-provided text before it is placed into HTML tooltip content.
+                     *
+                     * @param {*} str
+                     * @return {string}
+                     */
                     escapeHtml(str) {
-                        return str
+                        return String(str ?? '')
                             .replace(/&/g, "&amp;")
                             .replace(/</g, "&lt;")
                             .replace(/>/g, "&gt;")
