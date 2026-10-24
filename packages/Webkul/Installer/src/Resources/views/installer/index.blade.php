@@ -1104,13 +1104,13 @@
                                     }
                                 },
 
-                                readyForInstallation: (setErrors) => {
+                                readyForInstallation: () => {
                                     this.currentStep = 'installProgress';
 
                                     this.startMigration(setErrors);
                                 },
 
-                                createAdmin: (setErrors) => {
+                                createAdmin: () => {
                                     this.isLoading = true;
 
                                     this.saveAdmin(params, setErrors);
@@ -1211,7 +1211,9 @@
                                     }
                                 })
                                 .catch(error => {
-                                    setErrors(error.response.data.errors);
+                                    this.isLoading = false;
+
+                                    setErrors(error.response.data.errors ?? {});
                                 });
                         },
 

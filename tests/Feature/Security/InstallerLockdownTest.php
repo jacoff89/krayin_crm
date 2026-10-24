@@ -202,3 +202,21 @@ it('backfills the database flag when it infers completion from the database', fu
 
     expect($database->backfilled)->toBeTrue();
 });
+
+/**
+ * Any non-installer request made mid-installation (another tab, the favicon, an admin URL) used to
+ * write the completion marker because the seeded administrator made the database look installed,
+ * which then answered the final installer step with 403.
+ */
+it('does not write the completion marker for a non-installer request during installation', function () {
+    ($this->fakeDatabase)(completed: false, populated: true);
+
+    app(DatabaseManager::class)->markInstallationInProgress();
+
+    $response = (new CanInstall)->handle(Request::create('/admin/login'), fn () => response('ok'));
+
+    expect($response->getStatusCode())->toBe(302)
+        ->and(file_exists(storage_path('installed')))->toBeFalse()
+        ->and(app(DatabaseManager::class)->backfilled)->toBeFalse()
+        ->and(app(DatabaseManager::class)->isInstallationComplete())->toBeFalse();
+});

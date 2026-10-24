@@ -58,7 +58,18 @@ class CanInstall
             return true;
         }
 
-        if (($databaseManager = app(DatabaseManager::class))->isInstalled()) {
+        $databaseManager = app(DatabaseManager::class);
+
+        /**
+         * The seeder creates the default administrator before the final step runs, so mid-install the
+         * database already looks installed. Writing the marker then would lock the installer out of
+         * its own last step.
+         */
+        if ($databaseManager->isInstallationInProgress()) {
+            return false;
+        }
+
+        if ($databaseManager->isInstalled()) {
             touch(storage_path('installed'));
 
             /**

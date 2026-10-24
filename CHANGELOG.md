@@ -4,6 +4,8 @@ This changelog consists of the bug & security fixes and new features being inclu
 
 ## **v2.2.7 (16th of Oct 2026)**
 
+* [fixed] Fixed the web installer rejecting the admin account step with `403` when any non-installer page was requested mid-installation.
+
 * [fixed] Fixed a web form submission creating a duplicate contact when the address differed only in case.
 
 * [fixed] Fixed an empty web form submission answering with a server error.
