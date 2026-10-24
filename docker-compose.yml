@@ -1,7 +1,7 @@
 services:
   nginx:
     image: nginx:latest
-    container_name: crm-nginx
+    container_name: krayin_crm-nginx
     working_dir: /var/www/html
     depends_on:
       - php-fpm
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   php-fpm:
-    container_name: crm-php-fpm
+    container_name: krayin_crm-php-fpm
     build:
       context: .docker/php-fpm
       args:
@@ -31,10 +31,10 @@ services:
     restart: unless-stopped
 
   db:
-    container_name: crm-db
+    container_name: krayin_crm-db
     image: mysql:8.4
     volumes:
-      - crm-db-data:/var/lib/mysql
+      - krayin_crm-db-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE}
@@ -53,14 +53,14 @@ services:
       - mailnet
 
   postfix-opendkim:
-    container_name: crm-postfix-opendkim
+    container_name: krayin_crm-postfix-opendkim
     build: .docker/postfix-opendkim
     networks:
       - mailnet
     restart: unless-stopped
 
 volumes:
-  crm-db-data:
+  krayin_crm-db-data:
 
 networks:
   mailnet:
