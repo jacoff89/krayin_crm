@@ -38,35 +38,14 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/var/www/html
       - ./.docker/php-fpm/php-prod.ini:/etc/php/8.4/fpm/conf.d/99-prod.ini:ro
     depends_on:
-      db:
-        condition: service_healthy
       postfix-opendkim:
         condition: service_started
-    networks:
-      - mailnet
-    restart: unless-stopped
-    logging: *default-logging
-
-  db:
-    container_name: krayin_crm-db
-    image: mysql:8.4
-    volumes:
-      - krayin_crm-db-data:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Задай DB_ROOT_PASSWORD в .env}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?Задай DB_PASSWORD в .env}
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
     networks:
       - mailnet
     restart: unless-stopped
@@ -79,9 +58,6 @@ services:
       - mailnet
     restart: unless-stopped
     logging: *default-logging
-
-volumes:
-  krayin_crm-db-data:
 
 networks:
   mailnet:
